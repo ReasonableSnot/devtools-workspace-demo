@@ -1,0 +1,320 @@
+import React, { useState, useEffect } from 'react';
+import { Play, Book, Lightbulb, Monitor, SunMoon } from 'lucide-react'; // Icons from lucide-react
+
+// Declare mandatory global variables (even if not used in this specific app)
+// These are provided by the Canvas environment for Firebase integration.
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+function App() {
+  const [code, setCode] = useState(`print("Hello, Python 3.x workspace!")
+x = 10
+y = 20
+print(f"The sum of x and y is: {x + y}")
+
+for i in range(3):
+    print(f"Loop iteration: {i}")
+
+def greet(name):
+    return f"Greetings, {name}!"
+
+message = greet("Developer")
+print(message)
+`);
+  const [output, setOutput] = useState("Click 'Run Code' to see output.");
+  const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // Default to dark mode
+  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'reference'
+
+  // Effect to apply dark mode class to body on initial load and theme change
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // Function to simulate Python code execution using Gemini API
+  const handleRunCode = async () => {
+    setLoading(true);
+    setOutput("Executing code (simulated by AI)..."); // Provide immediate feedback
+
+    try {
+      // Construct the prompt to instruct the AI to act as a Python interpreter
+      const prompt = `Simulate a Python 3.x interpreter. Execute the following code and provide only the console output. If there's an error, provide the traceback. Be concise and precise with the output, no extra conversational text.
+
+\`\`\`python
+${code}
+\`\`\`
+`;
+      // Payload for the Gemini API request
+      const payload = {
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      };
+
+      // API key (left empty, Canvas will inject it at runtime)
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      // Make the fetch call to the Gemini API
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      // Process the API response
+      if (result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setOutput(text); // Set the output from the AI
+      } else {
+        setOutput("Error: Could not get a valid response from the AI. Please try again.");
+        console.error("Gemini API response structure unexpected:", result);
+      }
+    } catch (error) {
+      setOutput(`An error occurred: ${error.message}. Check console for details.`);
+      console.error("Error during API call:", error);
+    } finally {
+      setLoading(false); // End loading state
+    }
+  };
+
+  const commonPythonReferences = `
+### Basic Syntax
+\`\`\`python
+# This is a comment
+my_variable = "Hello" # Assignment
+print(my_variable) # Output to console
+
+# Indentation is crucial for blocks (e.g., loops, functions, if statements)
+if True:
+    print("This is indented")
+\`\`\`
+
+### Data Types
+\`\`\`python
+# Numbers
+integer_num = 10
+float_num = 3.14
+complex_num = 1 + 2j
+
+# Strings
+single_quote = 'Python'
+double_quote = "Python"
+triple_quote = """Multi-line string"""
+
+# Booleans
+is_true = True
+is_false = False
+
+# Lists (ordered, changeable, allow duplicates)
+my_list = [1, "two", 3.0]
+
+# Tuples (ordered, unchangeable, allow duplicates)
+my_tuple = (1, 2, "three")
+
+# Sets (unordered, unindexed, no duplicates)
+my_set = {"apple", "banana", "cherry"}
+
+# Dictionaries (unordered, changeable, key-value pairs)
+my_dict = {"name": "Alice", "age": 30}
+\`\`\`
+
+### Control Flow
+\`\`\`python
+# If-Elif-Else
+x = 10
+if x > 10:
+    print("x is greater than 10")
+elif x == 10:
+    print("x is 10")
+else:
+    print("x is less than 10")
+
+# For Loop
+fruits = ["apple", "banana", "cherry"]
+for fruit in fruits:
+    print(fruit)
+
+# While Loop
+count = 0
+while count < 3:
+    print(f"Count: {count}")
+    count += 1
+\`\`\`
+
+### Functions
+\`\`\`python
+def add_numbers(a, b):
+    """This function adds two numbers."""
+    return a + b
+
+result = add_numbers(5, 7)
+print(f"Result: {result}")
+
+def greet_person(name="Guest"): # Default parameter
+    print(f"Hello, {name}!")
+
+greet_person()
+greet_person("Bob")
+\`\`\`
+
+### Input/Output
+\`\`\`python
+# Get input from user
+# user_name = input("Enter your name: ")
+# print(f"Hello, {user_name}!")
+
+# File operations (basic example)
+# with open("example.txt", "w") as f:
+#     f.write("Hello, file!")
+# with open("example.txt", "r") as f:
+#     content = f.read()
+#     print(content)
+\`\`\`
+
+### Error Handling
+\`\`\`python
+try:
+    result = 10 / 0
+except ZeroDivisionError:
+    print("Cannot divide by zero!")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+finally:
+    print("Execution finished.")
+\`\`\`
+  `;
+
+  return (
+    <div className={`min-h-screen font-sans antialiased ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'} transition-colors duration-300 p-4 sm:p-6 md:p-8 rounded-lg shadow-lg`}>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+      <h1 className="text-3xl sm:text-4xl font-bold mb-6 text-center">Python 3.x Dev Workspace</h1>
+
+      {/* Tabs */}
+      <div className="flex justify-center mb-6">
+        <button
+          onClick={() => setActiveTab('editor')}
+          className={`px-6 py-3 rounded-l-lg focus:outline-none transition-all duration-300
+            ${activeTab === 'editor'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-gray-700 text-gray-300 hover:bg-blue-700 hover:text-white dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-blue-800'
+            }`}
+        >
+          <Monitor className="inline-block mr-2" size={20} /> Editor & Output
+        </button>
+        <button
+          onClick={() => setActiveTab('reference')}
+          className={`px-6 py-3 rounded-r-lg focus:outline-none transition-all duration-300
+            ${activeTab === 'reference'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-gray-700 text-gray-300 hover:bg-blue-700 hover:text-white dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-blue-800'
+            }`}
+        >
+          <Book className="inline-block mr-2" size={20} /> Reference & Options
+        </button>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Editor & Output Panel */}
+        {activeTab === 'editor' && (
+          <div className="md:w-full flex-grow p-4 rounded-lg shadow-xl border border-gray-700 dark:border-gray-800 bg-white dark:bg-gray-800">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center">
+              <Lightbulb className="mr-2" size={20} /> Python Code Editor
+            </h2>
+            <textarea
+              className={`w-full h-80 p-3 mb-4 rounded-md resize-y font-mono text-sm border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500
+                ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}
+              `}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Write your Python code here..."
+            ></textarea>
+
+            <button
+              onClick={handleRunCode}
+              disabled={loading}
+              className={`w-full py-3 rounded-md font-semibold text-lg transition-all duration-300 shadow-md
+                ${loading
+                  ? 'bg-blue-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-98'
+                }
+              `}
+            >
+              <Play className="inline-block mr-2" size={20} />
+              {loading ? 'Running...' : 'Run Code'}
+            </button>
+
+            <h2 className="text-xl font-semibold mt-6 mb-4 text-gray-800 dark:text-gray-200 flex items-center">
+              <Monitor className="mr-2" size={20} /> Console Output
+            </h2>
+            <pre
+              className={`w-full h-60 p-3 rounded-md overflow-auto whitespace-pre-wrap break-words text-sm border border-gray-300 dark:border-gray-600
+                ${darkMode ? 'bg-gray-700 text-green-300' : 'bg-gray-100 text-green-800'}
+              `}
+            >
+              {output}
+            </pre>
+          </div>
+        )}
+
+        {/* Reference & Options Panel */}
+        {activeTab === 'reference' && (
+          <div className="md:w-full flex-grow p-4 rounded-lg shadow-xl border border-gray-700 dark:border-gray-800 bg-white dark:bg-gray-800">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center">
+              <SunMoon className="mr-2" size={20} /> Developer Options
+            </h2>
+            <div className="mb-6 p-4 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+              <label htmlFor="darkModeToggle" className="flex items-center cursor-pointer">
+                <span className="relative">
+                  <input
+                    type="checkbox"
+                    id="darkModeToggle"
+                    className="sr-only"
+                    checked={darkMode}
+                    onChange={() => setDarkMode(!darkMode)}
+                  />
+                  <div className={`block w-14 h-8 rounded-full transition-colors duration-300 ${darkMode ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${darkMode ? 'translate-x-6' : ''}`}></div>
+                </span>
+                <span className="ml-3 text-lg font-medium text-gray-800 dark:text-gray-200">
+                  {darkMode ? 'Dark Mode On' : 'Light Mode On'}
+                </span>
+              </label>
+              <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300">Environment Info:</h3>
+                  <p>App ID: {appId}</p>
+                  <p>Simulated Python 3.x environment</p>
+                  <p>AI Model: gemini-2.0-flash (for code simulation)</p>
+              </div>
+            </div>
+
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center">
+              <Book className="mr-2" size={20} /> Python 3.x Quick Reference
+            </h2>
+            <div className={`p-4 rounded-md border border-gray-300 dark:border-gray-600 overflow-y-auto max-h-[calc(100vh-350px)]
+              ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}
+            >
+              {/* Render markdown-like content. For a full markdown renderer, a library would be needed.
+                  Here, we use pre-formatted text which can include markdown syntax for display purposes. */}
+              <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">
+                {commonPythonReferences}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
